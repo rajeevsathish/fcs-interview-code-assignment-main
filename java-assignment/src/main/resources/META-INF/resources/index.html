@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Fulfillment Monolith — API Console</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --panel: #1e293b;
+    --panel-2: #16213a;
+    --border: #2c3a56;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --accent: #38bdf8;
+    --ok: #22c55e;
+    --err: #f87171;
+    --warn: #fbbf24;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  header {
+    padding: 24px 28px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  header h1 { margin: 0 0 4px; font-size: 22px; }
+  header p { margin: 0; color: var(--muted); font-size: 14px; }
+  header a { color: var(--accent); text-decoration: none; }
+  main {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    gap: 18px;
+    padding: 20px 28px;
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    min-height: 280px;
+  }
+  .card h2 {
+    margin: 0 0 4px;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .card h2 .badge {
+    font-size: 11px;
+    font-weight: normal;
+    color: var(--muted);
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 2px 9px;
+  }
+  .card .desc { color: var(--muted); font-size: 12.5px; margin-bottom: 10px; }
+  form.inline { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  form.inline input {
+    flex: 1 1 100px;
+    min-width: 70px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 7px 9px;
+    font-size: 13px;
+  }
+  form.inline input::placeholder { color: #64748a; }
+  button {
+    background: var(--accent);
+    color: #06212f;
+    border: none;
+    border-radius: 6px;
+    padding: 7px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button.secondary {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    font-weight: normal;
+    padding: 4px 9px;
+    font-size: 12px;
+  }
+  button.danger { background: var(--err); color: #2a0a0a; }
+  button:hover { opacity: 0.88; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: .03em; }
+  td.actions { text-align: right; white-space: nowrap; }
+  .list-wrap { flex: 1; overflow: auto; max-height: 220px; }
+  .empty { color: var(--muted); font-size: 12.5px; padding: 8px 0; }
+
+  #fulfillment-status { margin-top: 4px; font-size: 12.5px; min-height: 18px; }
+
+  section.log {
+    margin: 4px 28px 32px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+  section.log h2 {
+    margin: 0; padding: 12px 18px; border-bottom: 1px solid var(--border); font-size: 15px;
+    display:flex; justify-content: space-between; align-items:center;
+  }
+  #log {
+    max-height: 320px;
+    overflow: auto;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12.5px;
+    padding: 8px 18px 16px;
+  }
+  .entry { padding: 8px 0; border-bottom: 1px dashed var(--border); }
+  .entry:last-child { border-bottom: none; }
+  .entry .line1 { display: flex; gap: 10px; align-items: baseline; }
+  .method { color: var(--accent); font-weight: 700; }
+  .status { font-weight: 700; padding: 1px 7px; border-radius: 10px; font-size: 11.5px; }
+  .status.s2 { background: rgba(34,197,94,.15); color: var(--ok); }
+  .status.s4 { background: rgba(248,113,113,.15); color: var(--err); }
+  .status.s5 { background: rgba(251,191,36,.15); color: var(--warn); }
+  .url { color: var(--muted); }
+  pre { margin: 4px 0 0; white-space: pre-wrap; word-break: break-word; color: #cbd5e1; }
+  .empty-log { color: var(--muted); padding: 14px 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Fulfillment Monolith — API Console</h1>
+  <p>
+    A minimal UI to exercise the Store / Product / Warehouse / Fulfillment REST endpoints and see validation
+    responses live. For the full contract, see <a href="/q/swagger-ui/" target="_blank">Swagger UI</a>
+    (<a href="/q/openapi" target="_blank">/q/openapi</a>).
+  </p>
+</header>
+
+<main>
+
+  <!-- STORE -->
+  <div class="card">
+    <h2>Store <span class="badge">/store</span></h2>
+    <div class="desc">Create requires a unique <code>name</code>. Update/patch/delete 404 on an unknown id.</div>
+    <form class="inline" id="store-form">
+      <input name="name" placeholder="name" aria-label="Store name" required />
+      <input name="quantityProductsInStock" type="number" placeholder="stock" aria-label="Quantity products in stock" value="0" />
+      <button type="submit">Create</button>
+    </form>
+    <div class="list-wrap">
+      <table>
+        <thead><tr><th>Id</th><th>Name</th><th>Stock</th><th></th></tr></thead>
+        <tbody id="store-rows"></tbody>
+      </table>
+      <div class="empty" id="store-empty" hidden>No stores yet.</div>
+    </div>
+  </div>
+
+  <!-- PRODUCT -->
+  <div class="card">
+    <h2>Product <span class="badge">/product</span></h2>
+    <div class="desc">Create requires a unique <code>name</code>. Setting <code>id</code> on create is rejected (422).</div>
+    <form class="inline" id="product-form">
+      <input name="name" placeholder="name" aria-label="Product name" required />
+      <input name="stock" type="number" placeholder="stock" aria-label="Stock" value="0" />
+      <button type="submit">Create</button>
+    </form>
+    <div class="list-wrap">
+      <table>
+        <thead><tr><th>Id</th><th>Name</th><th>Stock</th><th></th></tr></thead>
+        <tbody id="product-rows"></tbody>
+      </table>
+      <div class="empty" id="product-empty" hidden>No products yet.</div>
+    </div>
+  </div>
+
+  <!-- WAREHOUSE -->
+  <div class="card">
+    <h2>Warehouse <span class="badge">/warehouse</span></h2>
+    <div class="desc">
+      Validates: unique business unit code, location must exist, location's max warehouse
+      count/capacity, and stock &le; capacity. Try a duplicate <code>businessUnitCode</code> to see a 400.
+    </div>
+    <form class="inline" id="warehouse-form">
+      <input name="businessUnitCode" placeholder="businessUnitCode e.g. MWH.100" aria-label="Business unit code" required />
+      <input name="location" placeholder="location e.g. EINDHOVEN-001" aria-label="Location" required />
+      <input name="capacity" type="number" placeholder="capacity" aria-label="Capacity" value="10" />
+      <input name="stock" type="number" placeholder="stock" aria-label="Stock" value="0" />
+      <button type="submit">Create</button>
+    </form>
+    <div class="list-wrap">
+      <table>
+        <thead><tr><th>Id</th><th>BU Code</th><th>Location</th><th>Cap</th><th>Stock</th><th></th></tr></thead>
+        <tbody id="warehouse-rows"></tbody>
+      </table>
+      <div class="empty" id="warehouse-empty" hidden>No warehouses yet.</div>
+    </div>
+    <div class="desc" style="margin-top:8px">Known valid locations: ZWOLLE-001, ZWOLLE-002, AMSTERDAM-001, AMSTERDAM-002, TILBURG-001, HELMOND-001, EINDHOVEN-001, VETSBY-001.</div>
+  </div>
+
+  <!-- FULFILLMENT -->
+  <div class="card">
+    <h2>Fulfillment <span class="badge">/fulfillment</span></h2>
+    <div class="desc">
+      Associate a Warehouse as a fulfillment source for a Product at a Store. Enforces: max 2 warehouses
+      per product per store, max 3 warehouses per store, max 5 products per warehouse.
+    </div>
+    <form class="inline" id="fulfillment-form">
+      <input name="storeId" type="number" placeholder="storeId" aria-label="Store id" required />
+      <input name="productId" type="number" placeholder="productId" aria-label="Product id" required />
+      <input name="warehouseId" type="number" placeholder="warehouseId" aria-label="Warehouse id" required />
+      <button type="submit">Associate</button>
+    </form>
+    <div class="inline" style="margin-bottom:6px">
+      <input id="fulfillment-lookup-store" type="number" placeholder="storeId to inspect" aria-label="Store id to inspect" />
+      <button type="button" class="secondary" id="fulfillment-lookup-btn">Show warehouses for store</button>
+    </div>
+    <div id="fulfillment-status" class="empty"></div>
+  </div>
+
+</main>
+
+<section class="log">
+  <h2>Request log <button class="secondary" id="clear-log">Clear</button></h2>
+  <div id="log"><div class="empty-log">Requests you make above will show up here, with the raw response.</div></div>
+</section>
+
+<script>
+const logEl = document.getElementById('log');
+document.getElementById('clear-log').onclick = () => {
+  logEl.innerHTML = '<div class="empty-log">Requests you make above will show up here, with the raw response.</div>';
+};
+
+function statusClass(status) {
+  if (status >= 200 && status < 300) return 's2';
+  if (status >= 400 && status < 500) return 's4';
+  return 's5';
+}
+
+async function call(method, url, body) {
+  const opts = { method, headers: {} };
+  if (body !== undefined) {
+    opts.headers['Content-Type'] = 'application/json';
+    opts.body = JSON.stringify(body);
+  }
+  let status = 0, data = null, text = '';
+  try {
+    const res = await fetch(url, opts);
+    status = res.status;
+    text = await res.text();
+    try { data = text ? JSON.parse(text) : null; } catch (e) { data = text; }
+  } catch (networkErr) {
+    status = 0;
+    data = { error: 'Network error: ' + networkErr.message };
+  }
+
+  const empty = logEl.querySelector('.empty-log');
+  if (empty) empty.remove();
+
+  const entry = document.createElement('div');
+  entry.className = 'entry';
+  entry.innerHTML =
+    '<div class="line1">' +
+      '<span class="method">' + method + '</span>' +
+      '<span class="status ' + statusClass(status) + '">' + (status || 'ERR') + '</span>' +
+      '<span class="url">' + url + '</span>' +
+    '</div>' +
+    '<pre></pre>';
+  entry.querySelector('pre').textContent = data === null ? '(no body)' : JSON.stringify(data, null, 2);
+  logEl.prepend(entry);
+
+  return { status, data };
+}
+
+// ---------- Store ----------
+async function refreshStores() {
+  const { data } = await call('GET', '/store');
+  const rows = document.getElementById('store-rows');
+  const empty = document.getElementById('store-empty');
+  rows.innerHTML = '';
+  const list = Array.isArray(data) ? data : [];
+  empty.hidden = list.length > 0;
+  for (const s of list) {
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td>' + s.id + '</td><td>' + escapeHtml(s.name) + '</td><td>' + s.quantityProductsInStock + '</td>' +
+      '<td class="actions"><button class="secondary" data-del>Delete</button></td>';
+    tr.querySelector('[data-del]').onclick = async () => { await call('DELETE', '/store/' + s.id); refreshStores(); };
+    rows.appendChild(tr);
+  }
+}
+document.getElementById('store-form').onsubmit = async (e) => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  await call('POST', '/store', {
+    name: f.get('name'),
+    quantityProductsInStock: Number(f.get('quantityProductsInStock') || 0),
+  });
+  e.target.reset();
+  refreshStores();
+};
+
+// ---------- Product ----------
+async function refreshProducts() {
+  const { data } = await call('GET', '/product');
+  const rows = document.getElementById('product-rows');
+  const empty = document.getElementById('product-empty');
+  rows.innerHTML = '';
+  const list = Array.isArray(data) ? data : [];
+  empty.hidden = list.length > 0;
+  for (const p of list) {
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td>' + p.id + '</td><td>' + escapeHtml(p.name) + '</td><td>' + p.stock + '</td>' +
+      '<td class="actions"><button class="secondary" data-del>Delete</button></td>';
+    tr.querySelector('[data-del]').onclick = async () => { await call('DELETE', '/product/' + p.id); refreshProducts(); };
+    rows.appendChild(tr);
+  }
+}
+document.getElementById('product-form').onsubmit = async (e) => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  await call('POST', '/product', {
+    name: f.get('name'),
+    stock: Number(f.get('stock') || 0),
+  });
+  e.target.reset();
+  refreshProducts();
+};
+
+// ---------- Warehouse ----------
+async function refreshWarehouses() {
+  const { data } = await call('GET', '/warehouse');
+  const rows = document.getElementById('warehouse-rows');
+  const empty = document.getElementById('warehouse-empty');
+  rows.innerHTML = '';
+  const list = Array.isArray(data) ? data : [];
+  empty.hidden = list.length > 0;
+  for (const w of list) {
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td>' + w.id + '</td><td>' + escapeHtml(w.businessUnitCode) + '</td><td>' + escapeHtml(w.location) + '</td>' +
+      '<td>' + w.capacity + '</td><td>' + w.stock + '</td>' +
+      '<td class="actions"><button class="secondary" data-archive>Archive</button></td>';
+    tr.querySelector('[data-archive]').onclick = async () => { await call('DELETE', '/warehouse/' + w.id); refreshWarehouses(); };
+    rows.appendChild(tr);
+  }
+}
+document.getElementById('warehouse-form').onsubmit = async (e) => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  await call('POST', '/warehouse', {
+    businessUnitCode: f.get('businessUnitCode'),
+    location: f.get('location'),
+    capacity: Number(f.get('capacity') || 0),
+    stock: Number(f.get('stock') || 0),
+  });
+  e.target.reset();
+  refreshWarehouses();
+};
+
+// ---------- Fulfillment ----------
+document.getElementById('fulfillment-form').onsubmit = async (e) => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  const storeId = f.get('storeId'), productId = f.get('productId'), warehouseId = f.get('warehouseId');
+  const { status } = await call('POST', '/fulfillment/store/' + storeId + '/product/' + productId + '/warehouse/' + warehouseId);
+  const statusEl = document.getElementById('fulfillment-status');
+  statusEl.textContent = status >= 200 && status < 300
+    ? 'Associated (HTTP ' + status + ').'
+    : 'Rejected (HTTP ' + status + ') — see request log below for why.';
+};
+document.getElementById('fulfillment-lookup-btn').onclick = async () => {
+  const storeId = document.getElementById('fulfillment-lookup-store').value;
+  if (!storeId) return;
+  const { status, data } = await call('GET', '/fulfillment/store/' + storeId);
+  const statusEl = document.getElementById('fulfillment-status');
+  statusEl.textContent = status === 200
+    ? 'Warehouses fulfilling store ' + storeId + ': ' + JSON.stringify(data)
+    : 'HTTP ' + status + ' — see request log below.';
+};
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+refreshStores();
+refreshProducts();
+refreshWarehouses();
+</script>
+
+</body>
+</html>
